@@ -76,123 +76,88 @@
         </div>
     </div>
 
-    <script>
-        let energyChart;
+<script>
+    let energyChart;
 
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-            document.getElementById('status').textContent = "Processing file...";
+        document.getElementById('status').textContent = "Processing file...";
 
-            Papa.parse(file, {
-                header: false,
-                complete: function(results) {
-                    const data = results.data;
-                    if (data.length < 2) {
-                        document.getElementById('status').textContent = "Error: CSV file is empty or invalid.";
-                        return;
-                    }
-
-                    // Parse data: A=epoch, B=kW, C=ISO time
-                    const parsedData = data.slice(1).map(row => {
-                        if (row.length < 3) return null;
-                        const epoch = parseFloat(row[0]);
-                        const kW = parseFloat(row[1]);
-                        const isoTime = row[2];
-                        return { epoch, kW, isoTime };
-                    }).filter(d => d !== null && !isNaN(d.kW));
-
-                    if (parsedData.length === 0) {
-                        document.getElementById('status').textContent = "Error: No valid data found.";
-                        return;
-                    }
-
-                    // Combine each pair of 30-minute rows into hourly
-                    const hourlyData = combineToHourly(parsedData);
-
-                    // Render chart
-                    renderChart(hourlyData);
-                    document.getElementById('status').textContent = `Processed ${parsedData.length} half-hourly entries into ${hourlyData.length} hourly entries.`;
-                },
-                error: function(error) {
-                    document.getElementById('status').textContent = "Error parsing CSV: " + error.message;
+        Papa.parse(file, {
+            header: false,
+            complete: function(results) {
+                const data = results.data;
+                if (data.length < 2) {
+                    document.getElementById('status').textContent = "Error: CSV file is empty or invalid.";
+                    return;
                 }
-            });
+
+                // Parse data: A=epoch, B=kW, C=ISO time
+                const parsedData = data.slice(1).map(row => {
+                    if (row.length < 3) return null;
+                    const epoch = parseFloat(row[0]);
+                    const kW = parseFloat(row[1]);
+                    const isoTime = row[2];
+                    return { epoch, kW, isoTime };
+                }).filter(d => d !== null && !isNaN(d.kW));
+
+                if (parsedData.length === 0) {
+                    document.getElementById('status').textContent = "Error: No valid data found.";
+                    return;
+                }
+
+                // Render chart with raw half-hourly data
+                renderChart(parsedData);
+                document.getElementById('status').textContent = `Processed ${parsedData.length} half-hourly entries.`;
+            },
+            error: function(error) {
+                document.getElementById('status').textContent = "Error parsing CSV: " + error.message;
+            }
+        });
+    }
+
+    function renderChart(data) {
+        const ctx = document.getElementById('energyChart').getContext('2d');
+
+        if (energyChart) {
+            energyChart.destroy();
         }
 
-        function combineToHourly(data) {
-            // Sort by time just in case
-            data.sort((a, b) => new Date(a.isoTime) - new Date(b.isoTime));
-
-            const hourlyData = [];
-            for (let i = 0; i < data.length; i += 2) {
-                if (i + 1 >= data.length) {
-                    // If there's an odd number of rows, just use the last one
-                    hourlyData.push({
-                        time: data[i].isoTime,
-                        kW: data[i].kW
-                    });
-                } else {
-                    // Combine two 30-minute rows into one hourly row
-                    const first = data[i];
-                    const second = data[i + 1];
-                    const firstDate = new Date(first.isoTime);
-                    const secondDate = new Date(second.isoTime);
-
-                    // Use the time of the first row for the hour
-                    const hourTime = firstDate.toISOString();
-                    const totalKW = first.kW + second.kW;
-
-                    hourlyData.push({
-                        time: hourTime,
-                        kW: totalKW
-                    });
-                }
-            }
-            return hourlyData;
-        }
-
-        function renderChart(data) {
-            const ctx = document.getElementById('energyChart').getContext('2d');
-
-            if (energyChart) {
-                energyChart.destroy();
-            }
-
-            energyChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.map(d => new Date(d.time).toLocaleString()),
-                    datasets: [{
-                        label: 'kW per Hour (Combined)',
-                        data: data.map(d => d.kW),
-                        borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        tension: 0.1,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time (Hourly)'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'kW'
-                            }
+        energyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => new Date(d.isoTime).toLocaleString()),
+                datasets: [{
+                    label: 'kW per Half-Hour (Raw)',
+                    data: data.map(d => d.kW),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time (Half-Hourly)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'kW'
                         }
                     }
                 }
-            });
-        }
-    </script>
+            }
+        });
+    }
+</script>
 </body>
 </html>
