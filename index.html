@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Usage Hourly Combiner</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 9999px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            background-color: #f9f9f9;
+        }
+        #fileInput {
+            display: none;
+        }
+        .chart-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        .chart-wrapper {
+            width: 9999px;
+            height: 500px;
+        }
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Energy Usage Hourly Combiner</h1>
+        <p>Upload a CSV file with columns: A (epoch time), B (kW used), C (ISO time, e.g., "2026-05-12T18:00:00.000Z")</p>
+
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <p>Click to upload CSV file</p>
+        </div>
+        <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)">
+
+        <div class="status" id="status">No file uploaded yet.</div>
+
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <canvas id="energyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let energyChart;
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').textContent = "Processing file...";
+
+            Papa.parse(file, {
+                header: false,
+                complete: function(results) {
+                    const data = results.data;
+                    if (data.length < 2) {
+                        document.getElementById('status').textContent = "Error: CSV file is empty or invalid.";
+                        return;
+                    }
+
+                    // Parse data: A=epoch, B=kW, C=ISO time
+                    const parsedData = data.slice(1).map(row => {
+                        if (row.length < 3) return null;
+                        const epoch = parseFloat(row[0]);
+                        const kW = parseFloat(row[1]);
+                        const isoTime = row[2];
+                        return { epoch, kW, isoTime };
+                    }).filter(d => d !== null && !isNaN(d.kW));
+
+                    if (parsedData.length === 0) {
+                        document.getElementById('status').textContent = "Error: No valid data found.";
+                        return;
+                    }
+
+                    // Combine each pair of 30-minute rows into hourly
+                    const hourlyData = combineToHourly(parsedData);
+
+                    // Render chart
+                    renderChart(hourlyData);
+                    document.getElementById('status').textContent = `Processed ${parsedData.length} half-hourly entries into ${hourlyData.length} hourly entries.`;
+                },
+                error: function(error) {
+                    document.getElementById('status').textContent = "Error parsing CSV: " + error.message;
+                }
+            });
+        }
+
+        function combineToHourly(data) {
+            // Sort by time just in case
+            data.sort((a, b) => new Date(a.isoTime) - new Date(b.isoTime));
+
+            const hourlyData = [];
+            for (let i = 0; i < data.length; i += 2) {
+                if (i + 1 >= data.length) {
+                    // If there's an odd number of rows, just use the last one
+                    hourlyData.push({
+                        time: data[i].isoTime,
+                        kW: data[i].kW
+                    });
+                } else {
+                    // Combine two 30-minute rows into one hourly row
+                    const first = data[i];
+                    const second = data[i + 1];
+                    const firstDate = new Date(first.isoTime);
+                    const secondDate = new Date(second.isoTime);
+
+                    // Use the time of the first row for the hour
+                    const hourTime = firstDate.toISOString();
+                    const totalKW = first.kW + second.kW;
+
+                    hourlyData.push({
+                        time: hourTime,
+                        kW: totalKW
+                    });
+                }
+            }
+            return hourlyData;
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('energyChart').getContext('2d');
+
+            if (energyChart) {
+                energyChart.destroy();
+            }
+
+            energyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.time).toLocaleString()),
+                    datasets: [{
+                        label: 'kW per Hour (Combined)',
+                        data: data.map(d => d.kW),
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (Hourly)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'kW'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
