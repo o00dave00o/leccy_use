@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Electricity Usage</title>
+    <title>Electricity Usage Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <style>
@@ -14,25 +14,30 @@
             background-color: #f5f5f5;
         }
         .container {
-            max-width: 9999px;
+            max-width: 1800px;
             margin: 0 auto;
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
             text-align: center;
             color: #333;
         }
+        .upload-instructions {
+            text-align: center;
+            margin: 10px 0;
+            color: #555;
+        }
         .upload-area {
             border: 2px dashed #ccc;
             padding: 20px;
             text-align: center;
-            margin: 20px 0;
+            margin: 20px auto;
             border-radius: 8px;
             cursor: pointer;
+            max-width: 500px;
         }
         .upload-area:hover {
             background-color: #f9f9f9;
@@ -42,11 +47,7 @@
         }
         .chart-container {
             width: 100%;
-            overflow-x: auto;
             margin-top: 20px;
-        }
-        .chart-wrapper {
-            width: 9999px;
             height: 500px;
         }
         .status {
@@ -54,110 +55,235 @@
             margin: 10px 0;
             color: #666;
         }
+        .time-buttons {
+            margin: 20px auto;
+            text-align: center;
+            max-width: 800px;
+        }
+        .time-buttons button {
+            margin: 0 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        .time-buttons button:hover {
+            background-color: #2980b9;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Electricity Usage (v0.6)</h1>
-        <p>Upload a CSV file with columns: A (epoch time), B (kW used), C (ISO time, e.g., "2026-05-12T18:00:00.000Z")</p>
-        <p>Download from <a href="https://glowmarkt.com/pages/property/energy-data" target="_blank">glowmarkt.com/pages/property/energy-data</a></p>
+        <h1>Electricity Usage Dashboard</h1>
+        <p class="upload-instructions">Upload a CSV file with columns: <strong>Epoch Time, kW Used, ISO Time</strong></p>
 
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <p>Click to upload CSV file</p>
+            <p>📁 Click to Upload CSV File</p>
         </div>
         <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)">
 
-        <div class="status" id="status">No file uploaded yet.</div>
+        <div class="spinner" id="spinner"></div>
+        <div class="status" id="status">Ready to upload</div>
+
+        <div class="time-buttons">
+            <button onclick="setTimeIncrement('half-hourly')">Half-Hourly</button>
+            <button onclick="setTimeIncrement('hourly')">Hourly</button>
+            <button onclick="setTimeIncrement('daily')">Daily</button>
+            <button onclick="setTimeIncrement('weekly')">Weekly</button>
+            <button onclick="setTimeIncrement('monthly')">Monthly</button>
+        </div>
 
         <div class="chart-container">
-            <div class="chart-wrapper">
-                <canvas id="energyChart"></canvas>
-            </div>
+            <canvas id="usageChart"></canvas>
         </div>
     </div>
 
-<script>
-    let energyChart;
+    <script>
+        // Global variables
+        let rawData = [];
+        let currentIncrement = 'half-hourly';
+        let usageChart;
 
-    function handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        document.getElementById('status').textContent = "Processing file...";
-
-        Papa.parse(file, {
-            header: false,
-            complete: function(results) {
-                const data = results.data;
-                if (data.length < 2) {
-                    document.getElementById('status').textContent = "Error: CSV file is empty or invalid.";
-                    return;
-                }
-
-                // Parse data: A=epoch, B=kW, C=ISO time
-                const parsedData = data.slice(1).map(row => {
-                    if (row.length < 3) return null;
-                    const epoch = parseFloat(row[0]);
-                    const kW = parseFloat(row[1]);
-                    const isoTime = row[2];
-                    return { epoch, kW, isoTime };
-                }).filter(d => d !== null && !isNaN(d.kW));
-
-                if (parsedData.length === 0) {
-                    document.getElementById('status').textContent = "Error: No valid data found.";
-                    return;
-                }
-
-                // Render chart with raw half-hourly data
-                renderChart(parsedData);
-                document.getElementById('status').textContent = `Processed ${parsedData.length} entries.`;
-            },
-            error: function(error) {
-                document.getElementById('status').textContent = "Error parsing CSV: " + error.message;
-            }
-        });
-    }
-
-    function renderChart(data) {
-        const ctx = document.getElementById('energyChart').getContext('2d');
-
-        if (energyChart) {
-            energyChart.destroy();
-        }
-
-        energyChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.map(d => new Date(d.isoTime).toLocaleString()),
-                datasets: [{
-                    label: 'kW per Half-Hour (Raw)',
-                    data: data.map(d => d.kW),
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    tension: 0.1,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'kW'
+        // Initialize the chart
+        function initChart() {
+            const ctx = document.getElementById('usageChart').getContext('2d');
+            usageChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Electricity Usage (kW)',
+                        data: [],
+                        borderColor: 'rgb(52, 152, 219)',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Time' }
+                        },
+                        y: {
+                            title: { display: true, text: 'kW Used' }
                         }
                     }
                 }
+            });
+        }
+
+        // Show/hide loading spinner
+        function setLoading(show) {
+            const spinner = document.getElementById('spinner');
+            spinner.style.display = show ? 'block' : 'none';
+        }
+
+        // Handle file upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').textContent = 'Processing file...';
+            setLoading(true);
+
+            Papa.parse(file, {
+                header: false,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    setLoading(false);
+                    try {
+                        rawData = results.data
+                            .filter(row => row.length >= 3 && !isNaN(parseInt(row[0])) && !isNaN(parseFloat(row[1])))
+                            .map(row => ({
+                                epoch: parseInt(row[0]),
+                                kW: parseFloat(row[1]),
+                                isoTime: row[2]
+                            }));
+
+                        if (rawData.length === 0) {
+                            throw new Error("No valid data found in the CSV file.");
+                        }
+
+                        console.log("Parsed Data:", rawData);
+                        setTimeIncrement(currentIncrement);
+                        document.getElementById('status').textContent = `File loaded: ${rawData.length} entries.`;
+                    } catch (error) {
+                        document.getElementById('status').textContent = `Error: ${error.message}`;
+                        console.error("Error processing data:", error);
+                    }
+                },
+                error: function(error) {
+                    setLoading(false);
+                    document.getElementById('status').textContent = `Error parsing file: ${error.message}`;
+                    console.error("Parse Error:", error);
+                }
+            });
+        }
+
+        // Set the time increment and update the chart
+        function setTimeIncrement(increment) {
+            currentIncrement = increment;
+            if (rawData.length === 0) {
+                document.getElementById('status').textContent = 'No data loaded. Upload a file first.';
+                return;
             }
-        });
-    }
-</script>
+
+            setLoading(true);
+            setTimeout(() => {
+                try {
+                    const aggregatedData = aggregateData(rawData, increment);
+                    updateChart(aggregatedData.labels, aggregatedData.data);
+                    document.getElementById('status').textContent = `Showing ${increment} data.`;
+                } catch (error) {
+                    document.getElementById('status').textContent = `Error: ${error.message}`;
+                    console.error("Error aggregating data:", error);
+                } finally {
+                    setLoading(false);
+                }
+            }, 10);
+        }
+
+        // Aggregate data based on the selected increment
+        function aggregateData(data, increment) {
+            if (data.length === 0) return { labels: [], data: [] };
+
+            // Sort data by epoch time
+            const sortedData = [...data].sort((a, b) => a.epoch - b.epoch);
+
+            const aggregated = {};
+            sortedData.forEach(entry => {
+                const date = new Date(entry.epoch * 1000);
+                let key;
+
+                switch (increment) {
+                    case 'half-hourly':
+                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                        break;
+                    case 'hourly':
+                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+                        break;
+                    case 'daily':
+                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        break;
+                    case 'weekly':
+                        const monday = getMondayOfWeek(date);
+                        key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+                        break;
+                    case 'monthly':
+                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        break;
+                    default:
+                        key = entry.isoTime;
+                }
+
+                aggregated[key] = (aggregated[key] || 0) + entry.kW;
+            });
+
+            return {
+                labels: Object.keys(aggregated),
+                data: Object.values(aggregated)
+            };
+        }
+
+        // Helper function to get the Monday of the week for a given date
+        function getMondayOfWeek(date) {
+            const day = date.getDay(); // 0 (Sunday) to 6 (Saturday)
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+            return new Date(date.setDate(diff));
+        }
+
+        // Update the chart with new data
+        function updateChart(labels, data) {
+            if (!usageChart) {
+                console.error("Chart not initialized!");
+                return;
+            }
+            usageChart.data.labels = labels;
+            usageChart.data.datasets[0].data = data;
+            usageChart.update();
+        }
+
+        // Initialize the chart when the page loads
+        window.onload = initChart;
+    </script>
 </body>
 </html>
