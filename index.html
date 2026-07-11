@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Electricity Usage Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Electricity Usage & Cost Summary</title>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <style>
         body {
@@ -15,7 +14,7 @@
             color: #e2e8f0;
         }
         .container {
-            max-width: 1800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: #1e293b;
             padding: 20px;
@@ -51,11 +50,6 @@
         }
         #fileInput {
             display: none;
-        }
-        .chart-container {
-            width: 100%;
-            margin-top: 20px;
-            height: 500px;
         }
         .status {
             text-align: center;
@@ -101,11 +95,39 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background-color: #0f172a;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        th {
+            background-color: #1e293b;
+            color: #38bdf8;
+        }
+        tr:hover {
+            background-color: #1e293b;
+        }
+        .summary-heading {
+            margin-top: 30px;
+            color: #38bdf8;
+            border-bottom: 2px solid #38bdf8;
+            padding-bottom: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Electricity Usage Dashboard</h1>
+        <h1>Electricity Usage & Cost Summary</h1>
         <p class="upload-instructions">Upload a CSV file with columns: <strong>Epoch Time, kW Used, ISO Time</strong></p>
 
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -115,6 +137,7 @@
 
         <div class="spinner" id="spinner"></div>
         <div class="status" id="status"><a href="https://glowmarkt.com/pages/property/energy-data" target="_blank">Download from glowmarkt.com (Select 30min data granularity)</a></div>
+        
         <div class="time-buttons">
             <button onclick="setTimeIncrement('half-hourly')">Half-Hourly</button>
             <button onclick="setTimeIncrement('hourly')">Hourly</button>
@@ -123,8 +146,22 @@
             <button onclick="setTimeIncrement('monthly')">Monthly</button>
         </div>
 
-        <div class="chart-container">
-            <canvas id="usageChart"></canvas>
+        <h3 class="summary-heading" id="tableTitle">Summary View</h3>
+        <div class="table-container">
+            <table id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>Time Period</th>
+                        <th>Electricity Used (kWh)</th>
+                        <th>Calculated Cost (£)</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #94a3b8;">No data loaded yet. Upload a file to view summary.</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -132,49 +169,9 @@
         // Global variables
         let rawData = [];
         let currentIncrement = 'half-hourly';
-        let usageChart;
-
-        // Initialize the chart
-        function initChart() {
-            const ctx = document.getElementById('usageChart').getContext('2d');
-            usageChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Electricity Usage (kW)',
-                        data: [],
-                        borderColor: 'rgb(56, 189, 248)',
-                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e2e8f0'
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: { display: true, text: 'Time', color: '#94a3b8' },
-                            ticks: { color: '#94a3b8' },
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                        },
-                        y: {
-                            title: { display: true, text: 'kW Used', color: '#94a3b8' },
-                            ticks: { color: '#94a3b8' },
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                        }
-                    }
-                }
-            });
-        }
+        const OFF_PEAK_RATE = 0.09; // 9p
+        const PEAK_RATE = 0.287;   // 28.7p
+        const STANDING_CHARGE = 0.60; // 60p per day
 
         // Show/hide loading spinner
         function setLoading(show) {
@@ -208,7 +205,6 @@
                             throw new Error("No valid data found in the CSV file.");
                         }
 
-                        console.log("Parsed Data:", rawData);
                         setTimeIncrement(currentIncrement);
                         document.getElementById('status').textContent = `File loaded: ${rawData.length} entries.`;
                     } catch (error) {
@@ -224,7 +220,7 @@
             });
         }
 
-        // Set the time increment and update the chart
+        // Set the time increment and update table
         function setTimeIncrement(increment) {
             currentIncrement = increment;
             if (rawData.length === 0) {
@@ -236,8 +232,8 @@
             setTimeout(() => {
                 try {
                     const aggregatedData = aggregateData(rawData, increment);
-                    updateChart(aggregatedData.labels, aggregatedData.data);
-                    document.getElementById('status').textContent = `Showing ${increment} data.`;
+                    displayTable(aggregatedData, increment);
+                    document.getElementById('status').textContent = `Showing ${increment} data summary.`;
                 } catch (error) {
                     document.getElementById('status').textContent = `Error: ${error.message}`;
                     console.error("Error aggregating data:", error);
@@ -247,31 +243,53 @@
             }, 10);
         }
 
+        // Calculate cost for a single slice of consumption based on hours
+        function calculateSliceCost(date, kW, increment) {
+            // Glowmarkt 30-min entries represent the average kW load over that half-hour.
+            // Convert kW to kWh based on data tracking intervals. 
+            let kwh = kW;
+            if (increment === 'half-hourly') {
+                kwh = kW * 0.5; // kW over 30 mins = kW * 0.5 hours
+            }
+
+            const hour = date.getHours();
+            // Off-peak: Midnight (0) up until 6am (exclusive of 6:00 itself)
+            const isOffPeak = (hour >= 0 && hour < 6);
+            const rate = isOffPeak ? OFF_PEAK_RATE : PEAK_RATE;
+            
+            return {
+                kwh: kwh,
+                energyCost: kwh * rate
+            };
+        }
+
         // Aggregate data based on the selected increment
         function aggregateData(data, increment) {
-            if (data.length === 0) return { labels: [], data: [] };
+            if (data.length === 0) return [];
 
             // Sort data by epoch time
             const sortedData = [...data].sort((a, b) => a.epoch - b.epoch);
 
             const aggregated = {};
+            
             sortedData.forEach(entry => {
                 const date = new Date(entry.epoch * 1000);
                 let key;
+                const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
                 switch (increment) {
                     case 'half-hourly':
-                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                        key = `${dayKey} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
                         break;
                     case 'hourly':
-                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+                        key = `${dayKey} ${String(date.getHours()).padStart(2, '0')}:00`;
                         break;
                     case 'daily':
-                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        key = dayKey;
                         break;
                     case 'weekly':
                         const monday = getMondayOfWeek(date);
-                        key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+                        key = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
                         break;
                     case 'monthly':
                         key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -280,35 +298,72 @@
                         key = entry.isoTime;
                 }
 
-                aggregated[key] = (aggregated[key] || 0) + entry.kW;
+                // Calculate usage conversions and commodity cost
+                const slice = calculateSliceCost(date, entry.kW, increment);
+
+                if (!aggregated[key]) {
+                    aggregated[key] = {
+                        kwh: 0,
+                        energyCost: 0,
+                        daysSeen: new Set()
+                    };
+                }
+
+                aggregated[key].kwh += slice.kwh;
+                aggregated[key].energyCost += slice.energyCost;
+                aggregated[key].daysSeen.add(dayKey);
             });
 
-            return {
-                labels: Object.keys(aggregated),
-                data: Object.values(aggregated)
-            };
+            // Convert to array format and handle standing charges
+            return Object.keys(aggregated).map(key => {
+                const item = aggregated[key];
+                let standingChargeTotal = 0;
+
+                // Apply standing charge for larger aggregations based on active days
+                if (increment === 'daily' || increment === 'weekly' || increment === 'monthly') {
+                    standingChargeTotal = item.daysSeen.size * STANDING_CHARGE;
+                }
+
+                return {
+                    period: key,
+                    kwh: item.kwh,
+                    totalCost: item.energyCost + standingChargeTotal
+                };
+            });
         }
 
         // Helper function to get the Monday of the week for a given date
         function getMondayOfWeek(date) {
-            const day = date.getDay(); // 0 (Sunday) to 6 (Saturday)
-            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-            return new Date(date.setDate(diff));
+            const tempDate = new Date(date.getTime());
+            const day = tempDate.getDay(); 
+            const diff = tempDate.getDate() - day + (day === 0 ? -6 : 1); 
+            return new Date(tempDate.setDate(diff));
         }
 
-        // Update the chart with new data
-        function updateChart(labels, data) {
-            if (!usageChart) {
-                console.error("Chart not initialized!");
+        // Populate the UI Table
+        function displayTable(data, increment) {
+            const tableBody = document.getElementById('tableBody');
+            const tableTitle = document.getElementById('tableTitle');
+            
+            // Capitalize title
+            tableTitle.textContent = `${increment.charAt(0).toUpperCase() + increment.slice(1)} Breakdowns (Inc. 60p/day standing charge where applicable)`;
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">No data available.</td></tr>`;
                 return;
             }
-            usageChart.data.labels = labels;
-            usageChart.data.datasets[0].data = data;
-            usageChart.update();
-        }
 
-        // Initialize the chart when the page loads
-        window.onload = initChart;
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${row.period}</strong></td>
+                    <td>${row.kwh.toFixed(3)} kWh</td>
+                    <td>£${row.totalCost.toFixed(2)}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
     </script>
 </body>
 </html>
