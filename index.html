@@ -3,365 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Electricity Usage & Cost Summary</title>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <title>Dynamic Electricity Usage Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #121824;
-            color: #e2e8f0;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #1e293b;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-        h1 {
-            text-align: center;
-            color: #f8fafc;
-        }
-        .upload-instructions {
-            text-align: center;
-            margin: 10px 0;
-            color: #94a3b8;
-        }
-        .upload-instructions strong {
-            color: #38bdf8;
-        }
-        .upload-area {
-            border: 2px dashed #475569;
-            padding: 20px;
-            text-align: center;
-            margin: 20px auto;
-            border-radius: 8px;
-            cursor: pointer;
-            max-width: 500px;
-            background-color: #1e293b;
-            transition: background-color 0.2s, border-color 0.2s;
-        }
-        .upload-area:hover {
-            background-color: #334155;
-            border-color: #38bdf8;
-        }
-        #fileInput {
-            display: none;
-        }
-        .status {
-            text-align: center;
-            margin: 10px 0;
-            color: #94a3b8;
-        }
-        .status a {
-            color: #38bdf8;
-            text-decoration: none;
-        }
-        .status a:hover {
-            text-decoration: underline;
-        }
-        .time-buttons {
-            margin: 20px auto;
-            text-align: center;
-            max-width: 800px;
-        }
-        .time-buttons button {
-            margin: 0 5px;
-            padding: 8px 12px;
-            cursor: pointer;
-            background-color: #0284c7;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-        .time-buttons button:hover {
-            background-color: #0369a1;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top: 4px solid #38bdf8;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 10px auto;
-            display: none;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .table-container {
-            margin-top: 20px;
-            overflow-x: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            background-color: #0f172a;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #334155;
-        }
-        th {
-            background-color: #1e293b;
-            color: #38bdf8;
-        }
-        tr:hover {
-            background-color: #1e293b;
-        }
-        .summary-heading {
-            margin-top: 30px;
-            color: #38bdf8;
-            border-bottom: 2px solid #38bdf8;
-            padding-bottom: 5px;
+        .tab-active {
+            border-color: #2563eb;
+            color: #2563eb;
+            background-color: #eff6ff;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Electricity Usage & Cost Summary</h1>
-        <p class="upload-instructions">Upload a CSV file with columns: <strong>Epoch Time, kW Used, ISO Time</strong></p>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
 
-        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <p>📁 Click to Upload CSV File</p>
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-200 pb-6">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">⚡ Smart Meter Analytics</h1>
+                <p class="text-gray-500 mt-1"</p>
+            </div>
+            
+            <!-- File Upload -->
+            <div class="flex items-center justify-center w-full md:w-auto">
+                <label for="dropzone-file" class="flex flex-col items-center justify-center w-full md:w-64 h-24 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer bg-white hover:bg-blue-50 transition duration-150">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
+                        <svg class="w-6 h-6 mb-2 text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                        </svg>
+                        <p class="text-xs text-blue-600 font-semibold" id="upload-text">Upload smart meter CSV file</p>
+                    </div>
+                    <input id="dropzone-file" type="file" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
+                </label>
+            </div>
+        </header>
+
+        <!-- Notification Banner if no data -->
+        <div id="no-data-alert" class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-xl mb-8">
+            <div class="flex">
+                <div class="flex-shrink-0 text-amber-500 font-bold">⚠️</div>
+                <div class="ml-3">
+                    <p class="text-sm text-amber-700 font-medium">
+    Please upload an electricity consumption CSV file from <a href="https://glowmarkt.com/pages/property/energy-data" target="_blank" rel="noopener noreferrer" class="underline font-bold hover:text-amber-900 transition duration-150">Glowmarkt</a> to populate the interactive dashboard.
+                    </p>
+                </div>
+            </div>
         </div>
-        <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)">
 
-        <div class="spinner" id="spinner"></div>
-        <div class="status" id="status"><a href="https://glowmarkt.com/pages/property/energy-data" target="_blank">Download from glowmarkt.com (Select 30min data granularity)</a></div>
-        
-        <div class="time-buttons">
-            <button onclick="setTimeIncrement('half-hourly')">Half-Hourly</button>
-            <button onclick="setTimeIncrement('hourly')">Hourly</button>
-            <button onclick="setTimeIncrement('daily')">Daily</button>
-            <button onclick="setTimeIncrement('weekly')">Weekly</button>
-            <button onclick="setTimeIncrement('monthly')">Monthly</button>
-        </div>
+        <!-- Dashboard Content (hidden until data loaded) -->
+        <div id="dashboard-content" class="hidden">
+            <!-- Key Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Usage</div>
+                    <div class="text-2xl font-bold mt-1 text-gray-900" id="stat-total-kwh">0.00 <span class="text-sm font-medium text-gray-500">kWh</span></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Cost (Inc. Standing Charge)</div>
+                    <div class="text-2xl font-bold mt-1 text-gray-900" id="stat-total-cost">£0.00</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Standing Charge Total</div>
+                    <div class="text-2xl font-bold mt-1 text-gray-600" id="stat-standing-total">£0.00</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Data Span (Days)</div>
+                    <div class="text-2xl font-bold mt-1 text-blue-600" id="stat-days-span">0 days</div>
+                </div>
+            </div>
 
-        <h3 class="summary-heading" id="tableTitle">Summary View</h3>
-        <div class="table-container">
-            <table id="summaryTable">
-                <thead>
-                    <tr>
-                        <th>Time Period</th>
-                        <th>Electricity Used (kWh)</th>
-                        <th>Calculated Cost (£)</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr>
-                        <td colspan="3" style="text-align: center; color: #94a3b8;">No data loaded yet. Upload a file to view summary.</td>
-                    </tr>
-                </tbody>
-            </table>
+            <!-- Main Charts & Controls Section -->
+            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 mb-6 gap-4">
+                    <!-- Views Tabs -->
+                    <div class="flex rounded-lg bg-gray-100 p-1 self-start">
+                        <button onclick="switchView('daily')" id="tab-daily" class="px-4 py-1.5 text-sm font-medium rounded-md transition duration-150 text-gray-600 hover:text-gray-900 tab-active">Daily</button>
+                        <button onclick="switchView('weekly')" id="tab-weekly" class="px-4 py-1.5 text-sm font-medium rounded-md transition duration-150 text-gray-600 hover:text-gray-900">Weekly</button>
+                        <button onclick="switchView('monthly')" id="tab-monthly" class="px-4 py-1.5 text-sm font-medium rounded-md transition duration-150 text-gray-600 hover:text-gray-900">Monthly</button>
+                    </div>
+                    <div class="text-xs text-gray-400 font-medium italic">
+                        Rates: Off-Peak @ 9.0p | Peak @ 28.7p | Standing Charge @ 60.0p/day
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="w-full h-80 relative mb-8">
+                    <canvas id="usageChart"></canvas>
+                </div>
+
+                <!-- Breakdown Data Table -->
+                <h3 class="text-lg font-bold text-gray-900 mb-4" id="table-heading">Breakdown Table</h3>
+                <div class="overflow-x-auto border border-gray-100 rounded-xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th class="p-4 text-xs font-bold text-gray-400 uppercase tracking-wider" id="table-time-col">Period</th>
+                                <th class="p-4 text-xs font-bold text-emerald-600 uppercase tracking-wider">Off-Peak Usage (kWh)</th>
+                                <th class="p-4 text-xs font-bold text-blue-600 uppercase tracking-wider">Peak Usage (kWh)</th>
+                                <th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Energy Cost (£)</th>
+                                <th class="p-4 text-xs font-bold text-orange-600 uppercase tracking-wider">Standing Charge (£)</th>
+                                <th class="p-4 text-xs font-bold text-gray-900 uppercase tracking-wider">Total Bill (£)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-gray-100 text-sm">
+                            <!-- Populated via Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Global variables
+        // Rates configuration
+        const PEAK_RATE = 0.287; // £0.287 per kWh
+        const OFF_PEAK_RATE = 0.090; // £0.090 per kWh
+        const STANDING_CHARGE_RATE = 0.60; // £0.60 per day
+
         let rawData = [];
-        let currentIncrement = 'half-hourly';
-        const OFF_PEAK_RATE = 0.09; // 9p
-        const PEAK_RATE = 0.287;   // 28.7p
-        const STANDING_CHARGE = 0.60; // 60p per day
+        let currentView = 'daily';
+        let mainChart = null;
 
-        // Show/hide loading spinner
-        function setLoading(show) {
-            const spinner = document.getElementById('spinner');
-            spinner.style.display = show ? 'block' : 'none';
-        }
-
-        // Handle file upload
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            document.getElementById('status').textContent = 'Processing file...';
-            setLoading(true);
+            document.getElementById('upload-text').innerText = file.name;
 
-            Papa.parse(file, {
-                header: false,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    setLoading(false);
-                    try {
-                        rawData = results.data
-                            .filter(row => row.length >= 3 && !isNaN(parseInt(row[0])) && !isNaN(parseFloat(row[1])))
-                            .map(row => ({
-                                epoch: parseInt(row[0]),
-                                kW: parseFloat(row[1]),
-                                isoTime: row[2]
-                            }));
-
-                        if (rawData.length === 0) {
-                            throw new Error("No valid data found in the CSV file.");
-                        }
-
-                        setTimeIncrement(currentIncrement);
-                        document.getElementById('status').textContent = `File loaded: ${rawData.length} entries.`;
-                    } catch (error) {
-                        document.getElementById('status').textContent = `Error: ${error.message}`;
-                        console.error("Error processing data:", error);
-                    }
-                },
-                error: function(error) {
-                    setLoading(false);
-                    document.getElementById('status').textContent = `Error parsing file: ${error.message}`;
-                    console.error("Parse Error:", error);
-                }
-            });
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCSV(text);
+            };
+            reader.readAsText(file);
         }
 
-        // Set the time increment and update table
-        function setTimeIncrement(increment) {
-            currentIncrement = increment;
-            if (rawData.length === 0) {
-                document.getElementById('status').textContent = 'No data loaded. Upload a file first.';
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/);
+            if (lines.length < 2) return;
+
+            // Simple header matching to find column indexes
+            const headers = lines[0].split(',').map(h => h.trim().replace(/['"]/g, ''));
+            const kwhIndex = headers.indexOf('kWh');
+            const dateIndex = headers.indexOf('dateTime');
+
+            if (kwhIndex === -1 || dateIndex === -1) {
+                alert("Error: Invalid CSV format. Must contain 'kWh' and 'dateTime' columns.");
                 return;
             }
 
-            setLoading(true);
-            setTimeout(() => {
-                try {
-                    const aggregatedData = aggregateData(rawData, increment);
-                    displayTable(aggregatedData, increment);
-                    document.getElementById('status').textContent = `Showing ${increment} data summary.`;
-                } catch (error) {
-                    document.getElementById('status').textContent = `Error: ${error.message}`;
-                    console.error("Error aggregating data:", error);
-                } finally {
-                    setLoading(false);
-                }
-            }, 10);
-        }
+            rawData = [];
 
-        // Calculate cost for a single slice of consumption based on hours
-        function calculateSliceCost(date, kW, increment) {
-            // Glowmarkt 30-min entries represent the average kW load over that half-hour.
-            // Convert kW to kWh based on data tracking intervals. 
-            let kwh = kW;
-            if (increment === 'half-hourly') {
-                kwh = kW * 0.5; // kW over 30 mins = kW * 0.5 hours
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const row = lines[i].split(',');
+                if (row.length <= Math.max(kwhIndex, dateIndex)) continue;
+
+                const kwhVal = parseFloat(row[kwhIndex]);
+                const dateStr = row[dateIndex].replace(/['"]/g, '').trim();
+                
+                if (isNaN(kwhVal) || !dateStr) continue;
+
+                const dateObj = new Date(dateStr);
+                if (isNaN(dateObj.getTime())) continue;
+
+                // Determine if peak or off-peak based on local/UTC hour
+                const hour = dateObj.getHours(); 
+                const period = (hour >= 0 && hour < 6) ? 'offpeak' : 'peak';
+
+                rawData.push({
+                    date: dateObj,
+                    kwh: kwhVal,
+                    period: period
+                });
             }
 
-            const hour = date.getHours();
-            // Off-peak: Midnight (0) up until 6am (exclusive of 6:00 itself)
-            const isOffPeak = (hour >= 0 && hour < 6);
-            const rate = isOffPeak ? OFF_PEAK_RATE : PEAK_RATE;
-            
-            return {
-                kwh: kwh,
-                energyCost: kwh * rate
-            };
+            if (rawData.length > 0) {
+                document.getElementById('no-data-alert').classList.add('hidden');
+                document.getElementById('dashboard-content').classList.remove('hidden');
+                calculateOverallStats();
+                processAndRenderView();
+            }
         }
 
-        // Aggregate data based on the selected increment
-        function aggregateData(data, increment) {
-            if (data.length === 0) return [];
+        // Helper to count unique dates in an array of records
+        function getUniqueDaysCount(records) {
+            const days = new Set();
+            records.forEach(r => {
+                const yyyy = r.date.getFullYear();
+                const mm = String(r.date.getMonth() + 1).padStart(2, '0');
+                const dd = String(r.date.getDate()).padStart(2, '0');
+                days.add(`${yyyy}-${mm}-${dd}`);
+            });
+            return days.size;
+        }
 
-            // Sort data by epoch time
-            const sortedData = [...data].sort((a, b) => a.epoch - b.epoch);
+        function calculateOverallStats() {
+            let totalKwh = 0;
+            let peakKwh = 0;
+            let offpeakKwh = 0;
 
-            const aggregated = {};
+            rawData.forEach(d => {
+                totalKwh += d.kwh;
+                if (d.period === 'peak') peakKwh += d.kwh;
+                else offpeakKwh += d.kwh;
+            });
+
+            const uniqueDays = getUniqueDaysCount(rawData);
+            const standingTotal = uniqueDays * STANDING_CHARGE_RATE;
+
+            const peakCost = peakKwh * PEAK_RATE;
+            const offpeakCost = offpeakKwh * OFF_PEAK_RATE;
+            const totalCost = peakCost + offpeakCost + standingTotal;
+
+            document.getElementById('stat-total-kwh').innerHTML = `${totalKwh.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span class="text-sm font-medium text-gray-500">kWh</span>`;
+            document.getElementById('stat-total-cost').innerText = `£${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('stat-standing-total').innerText = `£${standingTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('stat-days-span').innerText = `${uniqueDays} days`;
+        }
+
+        function switchView(view) {
+            currentView = view;
+            ['daily', 'weekly', 'monthly'].forEach(v => {
+                document.getElementById(`tab-${v}`).classList.remove('tab-active');
+            });
+            document.getElementById(`tab-${view}`).classList.add('tab-active');
+            processAndRenderView();
+        }
+
+        function getGroupKey(date, view) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
             
-            sortedData.forEach(entry => {
-                const date = new Date(entry.epoch * 1000);
-                let key;
-                const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            if (view === 'daily') {
+                return `${yyyy}-${mm}-${dd}`;
+            } else if (view === 'weekly') {
+                const d = new Date(date);
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+                const monday = new Date(d.setDate(diff));
+                return `Week of ${monday.getDate()} ${monday.toLocaleString('default', { month: 'short' })} ${monday.getFullYear()}`;
+            } else if (view === 'monthly') {
+                return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            }
+        }
 
-                switch (increment) {
-                    case 'half-hourly':
-                        key = `${dayKey} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-                        break;
-                    case 'hourly':
-                        key = `${dayKey} ${String(date.getHours()).padStart(2, '0')}:00`;
-                        break;
-                    case 'daily':
-                        key = dayKey;
-                        break;
-                    case 'weekly':
-                        const monday = getMondayOfWeek(date);
-                        key = `Week of ${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
-                        break;
-                    case 'monthly':
-                        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                        break;
-                    default:
-                        key = entry.isoTime;
-                }
+        function processAndRenderView() {
+            const groups = {};
 
-                // Calculate usage conversions and commodity cost
-                const slice = calculateSliceCost(date, entry.kW, increment);
-
-                if (!aggregated[key]) {
-                    aggregated[key] = {
-                        kwh: 0,
-                        energyCost: 0,
-                        daysSeen: new Set()
+            rawData.forEach(d => {
+                const key = getGroupKey(d.date, currentView);
+                const dateKey = `${d.date.getFullYear()}-${String(d.date.getMonth() + 1).padStart(2, '0')}-${String(d.date.getDate()).padStart(2, '0')}`;
+                
+                if (!groups[key]) {
+                    groups[key] = { 
+                        peakKwh: 0, 
+                        offpeakKwh: 0,
+                        uniqueDays: new Set()
                     };
                 }
-
-                aggregated[key].kwh += slice.kwh;
-                aggregated[key].energyCost += slice.energyCost;
-                aggregated[key].daysSeen.add(dayKey);
+                
+                groups[key].uniqueDays.add(dateKey);
+                if (d.period === 'peak') groups[key].peakKwh += d.kwh;
+                else groups[key].offpeakKwh += d.kwh;
             });
 
-            // Convert to array format and handle standing charges
-            return Object.keys(aggregated).map(key => {
-                const item = aggregated[key];
-                let standingChargeTotal = 0;
-
-                // Apply standing charge for larger aggregations based on active days
-                if (increment === 'daily' || increment === 'weekly' || increment === 'monthly') {
-                    standingChargeTotal = item.daysSeen.size * STANDING_CHARGE;
-                }
-
-                return {
-                    period: key,
-                    kwh: item.kwh,
-                    totalCost: item.energyCost + standingChargeTotal
-                };
-            });
-        }
-
-        // Helper function to get the Monday of the week for a given date
-        function getMondayOfWeek(date) {
-            const tempDate = new Date(date.getTime());
-            const day = tempDate.getDay(); 
-            const diff = tempDate.getDate() - day + (day === 0 ? -6 : 1); 
-            return new Date(tempDate.setDate(diff));
-        }
-
-        // Populate the UI Table
-        function displayTable(data, increment) {
-            const tableBody = document.getElementById('tableBody');
-            const tableTitle = document.getElementById('tableTitle');
-            
-            // Capitalize title
-            tableTitle.textContent = `${increment.charAt(0).toUpperCase() + increment.slice(1)} Breakdowns (Inc. 60p/day standing charge where applicable)`;
-            tableBody.innerHTML = '';
-
-            if (data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">No data available.</td></tr>`;
-                return;
+            // Sort chronically for the Chart (oldest to newest is natural left-to-right)
+            const labelsForChart = Object.keys(groups);
+            if (currentView === 'daily') {
+                labelsForChart.sort();
+            } else if (currentView === 'monthly') {
+                // Ensure monthly order is chronological
+                labelsForChart.sort((a, b) => new Date(a) - new Date(b));
             }
 
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${row.period}</strong></td>
-                    <td>${row.kwh.toFixed(3)} kWh</td>
-                    <td>£${row.totalCost.toFixed(2)}</td>
+            const peakData = [];
+            const offpeakData = [];
+            
+            labelsForChart.forEach(label => {
+                const item = groups[label];
+                peakData.push(item.peakKwh);
+                offpeakData.push(item.offpeakKwh);
+            });
+
+            // For the Table: Reverse so today / newest is at the top
+            const labelsForTable = [...labelsForChart].reverse();
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+
+            document.getElementById('table-time-col').innerText = currentView === 'daily' ? 'Date' : currentView === 'weekly' ? 'Week' : 'Month';
+            document.getElementById('table-heading').innerText = `${currentView.charAt(0).toUpperCase() + currentView.slice(1)} Bill Breakdown (Newest First)`;
+
+            labelsForTable.forEach(label => {
+                const item = groups[label];
+                const pCost = item.peakKwh * PEAK_RATE;
+                const opCost = item.offpeakKwh * OFF_PEAK_RATE;
+                const energyCost = pCost + opCost;
+                
+                const standingDays = item.uniqueDays.size;
+                const standingCost = standingDays * STANDING_CHARGE_RATE;
+                const totalCost = energyCost + standingCost;
+
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50 transition duration-150";
+                // Table columns swapped: Off-Peak columns now come before Peak columns
+                row.innerHTML = `
+                    <td class="p-4 font-semibold text-gray-900">
+                        ${label}
+                        <div class="text-xs text-gray-400 font-normal">${standingDays} day${standingDays > 1 ? 's' : ''} recorded</div>
+                    </td>
+                    <td class="p-4 text-emerald-600 font-medium">${item.offpeakKwh.toFixed(2)} kWh</td>
+                    <td class="p-4 text-blue-600 font-medium">${item.peakKwh.toFixed(2)} kWh</td>
+                    <td class="p-4 text-gray-500">£${energyCost.toFixed(2)}</td>
+                    <td class="p-4 text-orange-600">£${standingCost.toFixed(2)}</td>
+                    <td class="p-4 font-bold text-gray-900">£${totalCost.toFixed(2)}</td>
                 `;
-                tableBody.appendChild(tr);
+                tableBody.appendChild(row);
+            });
+
+            if (mainChart) {
+                mainChart.destroy();
+            }
+
+            const ctx = document.getElementById('usageChart').getContext('2d');
+            mainChart = new Chart(ctx, {
+                type: currentView === 'monthly' ? 'bar' : 'line',
+                data: {
+                    labels: labelsForChart,
+                    datasets: [
+                        {
+                            label: 'Off-Peak Usage (kWh)',
+                            data: offpeakData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.15
+                        },
+                        {
+                            label: 'Peak Usage (kWh)',
+                            data: peakData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.15
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Energy Consumption (kWh)', font: { weight: 'bold' } }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
             });
         }
     </script>
