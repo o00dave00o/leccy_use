@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Electricity Usage Dashboard</title>
+    <title>Electricity Usage Dashboard</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Chart.js -->
@@ -45,7 +45,7 @@
                 <div class="flex-shrink-0 text-amber-500 font-bold">⚠️</div>
                 <div class="ml-3">
                     <p class="text-sm text-neutral-300 font-medium">
-                        Please upload an electricity consumption CSV file from <a href="https://glowmarkt.com/pages/property/energy-data" target="_blank" rel="noopener noreferrer" class="underline font-bold text-amber-400 hover:text-amber-300 transition duration-150">Glowmarkt</a> to populate the interactive dashboard.
+                        Upload an electricity consumption CSV file from <a href="https://glowmarkt.com/pages/property/energy-data" target="_blank" rel="noopener noreferrer" class="underline font-bold text-amber-400 hover:text-amber-300 transition duration-150">Glowmarkt</a> to populate the interactive dashboard.
                     </p>
                 </div>
             </div>
@@ -106,13 +106,13 @@
                         <thead>
                             <tr class="bg-neutral-950/50 border-b border-neutral-800">
                                 <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider" id="table-time-col">Period</th>
-                                <th class="p-4 text-xs font-bold text-emerald-500 uppercase tracking-wider">Off-Peak (kWh)</th>
-                                <th class="p-4 text-xs font-bold text-blue-400 uppercase tracking-wider">Peak (kWh)</th>
-                                <th class="p-4 text-xs font-bold text-neutral-300 uppercase tracking-wider">Total Usage (kWh)</th>
-                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">Split (% Off-Peak / Peak)</th>
-                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">Energy Cost (£)</th>
-                                <th class="p-4 text-xs font-bold text-amber-600 uppercase tracking-wider">Standing Charge (£)</th>
-                                <th class="p-4 text-xs font-bold text-neutral-200 uppercase tracking-wider">Total Bill (£)</th>
+                                <th class="p-4 text-xs font-bold text-emerald-500 uppercase tracking-wider">Off-Peak</th>
+                                <th class="p-4 text-xs font-bold text-blue-400 uppercase tracking-wider">Peak</th>
+                                <th class="p-4 text-xs font-bold text-neutral-300 uppercase tracking-wider">Total Usage</th>
+                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">% Split</th>
+                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">Energy Cost</th>
+                                <th class="p-4 text-xs font-bold text-amber-600 uppercase tracking-wider">Standing Charge</th>
+                                <th class="p-4 text-xs font-bold text-neutral-200 uppercase tracking-wider">Total Bill</th>
                             </tr>
                         </thead>
                         <tbody id="table-body" class="divide-y divide-neutral-800 text-sm">
