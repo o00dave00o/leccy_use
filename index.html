@@ -53,7 +53,7 @@
 
         <!-- Dashboard Content (hidden until data loaded) -->
         <div id="dashboard-content" class="hidden">
-            <!-- Key Stats Cards (Dynamically calculated based on current view) -->
+            <!-- Key Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-neutral-900 p-5 rounded-xl border border-neutral-800 shadow-md">
                     <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wider" id="lbl-total-kwh">Average Usage</div>
@@ -101,7 +101,8 @@
                 <!-- Breakdown Data Table -->
                 <h3 class="text-lg font-bold text-neutral-100 mb-4" id="table-heading">Breakdown Table</h3>
                 <div class="overflow-x-auto border border-neutral-800 rounded-xl">
-                    <table class="w-full text-left border-collapse">
+                    <!-- Changed text-left to text-center here -->
+                    <table class="w-full text-center border-collapse">
                         <thead>
                             <tr class="bg-neutral-950/50 border-b border-neutral-800">
                                 <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider" id="table-time-col">Period</th>
@@ -124,10 +125,9 @@
     </div>
 
     <script>
-        // Rates configuration
-        const PEAK_RATE = 0.287; // £0.287 per kWh
-        const OFF_PEAK_RATE = 0.090; // £0.090 per kWh
-        const STANDING_CHARGE_RATE = 0.60; // £0.60 per day
+        const PEAK_RATE = 0.287;
+        const OFF_PEAK_RATE = 0.090;
+        const STANDING_CHARGE_RATE = 0.60;
 
         let rawData = [];
         let currentView = 'daily';
@@ -151,7 +151,6 @@
             const lines = text.split(/\r?\n/);
             if (lines.length < 2) return;
 
-            // Simple header matching to find column indexes
             const headers = lines[0].split(',').map(h => h.trim().replace(/['"]/g, ''));
             const kwhIndex = headers.indexOf('kWh');
             const dateIndex = headers.indexOf('dateTime');
@@ -176,7 +175,6 @@
                 const dateObj = new Date(dateStr);
                 if (isNaN(dateObj.getTime())) continue;
 
-                // Determine if peak or off-peak based on local/UTC hour
                 const hour = dateObj.getHours(); 
                 const period = (hour >= 0 && hour < 6) ? 'offpeak' : 'peak';
 
@@ -194,7 +192,6 @@
             }
         }
 
-        // Helper to count unique dates in an array of records
         function getUniqueDaysCount(records) {
             const days = new Set();
             records.forEach(r => {
@@ -258,12 +255,10 @@
                 else groups[key].offpeakKwh += d.kwh;
             });
 
-            // Sort chronically for the Chart (oldest to newest is natural left-to-right)
             const labelsForChart = Object.keys(groups);
             if (['halfhourly', 'hourly', 'daily'].includes(currentView)) {
                 labelsForChart.sort();
             } else if (currentView === 'monthly') {
-                // Ensure monthly order is chronological
                 labelsForChart.sort((a, b) => new Date(a) - new Date(b));
             }
 
@@ -276,10 +271,8 @@
                 offpeakData.push(item.offpeakKwh);
             });
 
-            // Calculate metrics for dynamic cards based on the processed view
             updateDynamicStats(groups);
 
-            // For the Table: Reverse so today / newest is at the top
             const labelsForTable = [...labelsForChart].reverse();
             const tableBody = document.getElementById('table-body');
             tableBody.innerHTML = '';
@@ -292,7 +285,6 @@
                 
             document.getElementById('table-heading').innerText = `${currentView === 'halfhourly' ? 'Half-Hourly' : currentView.charAt(0).toUpperCase() + currentView.slice(1)} Bill Breakdown (Newest First)`;
 
-            // Distribute standing charge fairly across fractional daily periods to prevent overcharging 
             let standingFraction = 1;
             if (currentView === 'hourly') standingFraction = 1 / 24;
             else if (currentView === 'halfhourly') standingFraction = 1 / 48;
@@ -307,7 +299,6 @@
                 const standingCost = standingDays * STANDING_CHARGE_RATE * standingFraction;
                 const totalCost = energyCost + standingCost;
 
-                // Add calculations for new columns
                 const totalKwh = item.peakKwh + item.offpeakKwh;
                 const peakPct = totalKwh > 0 ? (item.peakKwh / totalKwh) * 100 : 0;
                 const offpeakPct = totalKwh > 0 ? (item.offpeakKwh / totalKwh) * 100 : 0;
@@ -321,9 +312,7 @@
                     </td>
                     <td class="p-4 text-emerald-400 font-medium">${item.offpeakKwh.toFixed(2)} kWh</td>
                     <td class="p-4 text-blue-400 font-medium">${item.peakKwh.toFixed(2)} kWh</td>
-                    <!-- Column: Total Usage -->
                     <td class="p-4 text-neutral-300 font-bold">${totalKwh.toFixed(2)} kWh</td>
-                    <!-- Column: Percentage Split (Off-Peak % / Peak %) -->
                     <td class="p-4 font-medium text-neutral-400">
                         <span class="text-emerald-400">${offpeakPct.toFixed(0)}%</span> / 
                         <span class="text-blue-400">${peakPct.toFixed(0)}%</span>
@@ -341,7 +330,6 @@
 
             const ctx = document.getElementById('usageChart').getContext('2d');
             
-            // Adjust opacity dynamically: Bar charts need high opacity so they aren't "dim"
             const isMonthly = currentView === 'monthly';
             const offpeakBgColor = isMonthly ? 'rgba(52, 211, 153, 0.7)' : 'rgba(52, 211, 153, 0.05)';
             const peakBgColor = isMonthly ? 'rgba(96, 165, 250, 0.7)' : 'rgba(96, 165, 250, 0.05)';
@@ -420,7 +408,6 @@
 
             const uniqueDays = getUniqueDaysCount(rawData);
 
-            // Establish view label text values
             let periodLabelSingular = 'day';
             let periodLabelPlural = 'days';
             if (currentView === 'halfhourly') {
@@ -439,27 +426,22 @@
 
             const activePeriodLabel = periodCount === 1 ? periodLabelSingular : periodLabelPlural;
 
-            // Averages
             const avgKwh = periodCount > 0 ? (totalKwh / periodCount) : 0;
             const avgCost = periodCount > 0 ? (totalCost / periodCount) : 0;
             const avgStanding = periodCount > 0 ? (totalStanding / periodCount) : 0;
 
-            // Card 1: Dynamic Usage Card
             document.getElementById('lbl-total-kwh').innerText = `Avg. Usage / ${periodLabelSingular}`;
             document.getElementById('stat-total-kwh').innerHTML = `${avgKwh.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span class="text-sm font-medium text-neutral-500">kWh</span>`;
             document.getElementById('sub-total-kwh').innerText = `Total: ${totalKwh.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} kWh overall`;
 
-            // Card 2: Dynamic Cost Card
             document.getElementById('lbl-total-cost').innerText = `Avg. Cost / ${periodLabelSingular}`;
             document.getElementById('stat-total-cost').innerText = `£${avgCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('sub-total-cost').innerText = `Total: £${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} overall`;
 
-            // Card 3: Dynamic Standing Charge Card
             document.getElementById('lbl-standing-total').innerText = `Avg. Standing / ${periodLabelSingular}`;
             document.getElementById('stat-standing-total').innerText = `£${avgStanding.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4})}`;
             document.getElementById('sub-standing-total').innerText = `Total: £${totalStanding.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} overall`;
 
-            // Card 4: Dynamic Span Card
             document.getElementById('lbl-days-span').innerText = `Data Span (${activePeriodLabel})`;
             document.getElementById('stat-days-span').innerText = `${periodCount} ${activePeriodLabel}`;
             document.getElementById('sub-days-span').innerText = `${uniqueDays} active logging day${uniqueDays > 1 ? 's' : ''}`;
