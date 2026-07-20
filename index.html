@@ -17,7 +17,7 @@
 </head>
 <body class="bg-neutral-950 text-neutral-200 font-sans min-h-screen">
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Header -->
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-neutral-800 pb-6">
             <div>
@@ -94,25 +94,26 @@
                 </div>
 
                 <!-- Chart Container -->
-                <div class="w-full h-80 relative mb-8">
+                <div class="w-full h-96 relative mb-8">
                     <canvas id="usageChart"></canvas>
                 </div>
 
                 <!-- Breakdown Data Table -->
                 <h3 class="text-lg font-bold text-neutral-100 mb-4" id="table-heading">Breakdown Table</h3>
                 <div class="overflow-x-auto border border-neutral-800 rounded-xl">
-                    <!-- Changed text-left to text-center here -->
                     <table class="w-full text-center border-collapse">
                         <thead>
                             <tr class="bg-neutral-950/50 border-b border-neutral-800">
-                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider" id="table-time-col">Period</th>
-                                <th class="p-4 text-xs font-bold text-emerald-500 uppercase tracking-wider">Off-Peak</th>
-                                <th class="p-4 text-xs font-bold text-blue-400 uppercase tracking-wider">Peak</th>
-                                <th class="p-4 text-xs font-bold text-neutral-300 uppercase tracking-wider">Total Usage</th>
-                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">% Split</th>
-                                <th class="p-4 text-xs font-bold text-neutral-400 uppercase tracking-wider">Energy Cost</th>
-                                <th class="p-4 text-xs font-bold text-amber-600 uppercase tracking-wider">Standing Charge</th>
-                                <th class="p-4 text-xs font-bold text-neutral-200 uppercase tracking-wider">Total Bill</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-neutral-400 uppercase tracking-wider" id="table-time-col">Period</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-emerald-500 uppercase tracking-wider">Off-Peak</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-blue-400 uppercase tracking-wider">Peak</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-neutral-300 uppercase tracking-wider">Total Usage</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-neutral-400 uppercase tracking-wider">% Split</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-emerald-500 uppercase tracking-wider">Off-Peak Cost</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-blue-400 uppercase tracking-wider">Peak Cost</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-neutral-400 uppercase tracking-wider">Energy Cost</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-amber-600 uppercase tracking-wider">Standing Charge</th>
+                                <th class="px-3 py-3.5 text-xs font-bold text-neutral-200 uppercase tracking-wider">Total Bill</th>
                             </tr>
                         </thead>
                         <tbody id="table-body" class="divide-y divide-neutral-800 text-sm">
@@ -306,20 +307,22 @@
                 const row = document.createElement('tr');
                 row.className = "hover:bg-neutral-800/40 transition duration-150";
                 row.innerHTML = `
-                    <td class="p-4 font-semibold text-neutral-100">
+                    <td class="px-3 py-3.5 font-semibold text-neutral-100">
                         ${label}
                         <div class="text-xs text-neutral-500 font-normal">${standingDays} day${standingDays > 1 ? 's' : ''} recorded</div>
                     </td>
-                    <td class="p-4 text-emerald-400 font-medium">${item.offpeakKwh.toFixed(2)} kWh</td>
-                    <td class="p-4 text-blue-400 font-medium">${item.peakKwh.toFixed(2)} kWh</td>
-                    <td class="p-4 text-neutral-300 font-bold">${totalKwh.toFixed(2)} kWh</td>
-                    <td class="p-4 font-medium text-neutral-400">
+                    <td class="px-3 py-3.5 text-emerald-400 font-medium">${item.offpeakKwh.toFixed(2)} kWh</td>
+                    <td class="px-3 py-3.5 text-blue-400 font-medium">${item.peakKwh.toFixed(2)} kWh</td>
+                    <td class="px-3 py-3.5 text-neutral-300 font-bold">${totalKwh.toFixed(2)} kWh</td>
+                    <td class="px-3 py-3.5 font-medium text-neutral-400">
                         <span class="text-emerald-400">${offpeakPct.toFixed(0)}%</span> / 
                         <span class="text-blue-400">${peakPct.toFixed(0)}%</span>
                     </td>
-                    <td class="p-4 text-neutral-400">£${energyCost.toFixed(2)}</td>
-                    <td class="p-4 text-amber-600">£${standingCost.toFixed(3)}</td>
-                    <td class="p-4 font-bold text-neutral-100">£${totalCost.toFixed(2)}</td>
+                    <td class="px-3 py-3.5 text-emerald-400 font-medium">£${opCost.toFixed(2)}</td>
+                    <td class="px-3 py-3.5 text-blue-400 font-medium">£${pCost.toFixed(2)}</td>
+                    <td class="px-3 py-3.5 text-neutral-400 font-medium">£${energyCost.toFixed(2)}</td>
+                    <td class="px-3 py-3.5 text-amber-600">£${standingCost.toFixed(3)}</td>
+                    <td class="px-3 py-3.5 font-bold text-neutral-100">£${totalCost.toFixed(2)}</td>
                 `;
                 tableBody.appendChild(row);
             });
